@@ -4,18 +4,26 @@
 #include <Stepper.h>
 
 #include <jacsmega.h>
+#include "Frame.h"
+#include <LinkedList.h>
+/*
+ * Lista que relaciona  cada frame
+ * con la posicion de los motores, servos, leds, etc
+ * El indice de la lista es el frame
+ * Los elementos son objetos de la Clase Frame
+ * son los distintos elementos en el set
+ */
+LinkedList<Frame*> matrix = LinkedList<Frame*>();
 
 #define DEBUG true
 
 SLIPEncodedSerial SLIPSerial(Serial);
 OSCErrorCode error;
 
-// pasos por vuelta
-#define STEPS 2048
-// cuidado con el orden
-Stepper motorGramo(STEPS, 22, 26, 24, 28);
-int velocidad = 0;
-
+/*
+ * Control del gramophono
+ * Recibe los pasos que se mueve el motor
+ */
 void gramophono(OSCMessage &msg)
 {
   if (DEBUG)
@@ -24,15 +32,8 @@ void gramophono(OSCMessage &msg)
   {
     // recogemos el valor
     int valor = msg.getInt(0);
-
-    /* si recibimos 1, clockwise
-     * si recibimos -1, counterclockwise
-     * 78 RPM son aprox 1 vuelta por segundo
-     * para un framerate 25 -> aprox STEPS/6
-     * (un poco raro, deberia ser 25, revisar en la practica)
-     */
-
-    motorGramo.step(valor * STEPS / 6);
+    // movemos el motor
+    motorGramophono.step(valor);
 
     if (DEBUG)
     {
@@ -48,18 +49,19 @@ void gramophono(OSCMessage &msg)
  */
 void dragonframeShoot(OSCMessage &msg)
 {
-  int valor = 0;
+  int frame = 0;
   if (DEBUG)
     Serial.println("recibido en dragonframeShoot");
   if (msg.isInt(0))
   {
-    valor = msg.getInt(0);
+    frame = msg.getInt(0);
     Serial.print("SHOOT: ");
-    Serial.println(valor);
+    Serial.println(frame);
   }
-  // movemos el motor del gramophono
+  // enviamos para mover el motor del gramophono 1/FRAMERATE 
   OSCMessage msggramo("/gramophono");
-  msggramo.add(1);
+  // recogemos el frame
+  msggramo.add(matrix.get(1)->motor_gramo);
   gramophono(msggramo);
 }
 
@@ -69,17 +71,33 @@ void dragonframeShoot(OSCMessage &msg)
  */
 void dragonframePosition(OSCMessage &msg)
 {
-  int valor = 0;
+  int frame = 0;
   if (DEBUG)
     Serial.println("recibido en dragonframePosition");
   if (msg.isInt(0))
   {
-    valor = msg.getInt(0);
+    frame = msg.getInt(0);
     Serial.print("POSITION: ");
-    Serial.println(valor);
+    Serial.println(frame);
   }
 }
 
+void initMatrix(){
+  // m_gramo, s_ventana, l_desk
+  Frame *f0000 = new Frame(0,0,0);
+  Frame *f0001 = new Frame(FRAMESTEPS,90,1);
+  Frame *f0002 = new Frame(FRAMESTEPS/2,90,1);
+  matrix.add(0, f0000);
+  matrix.add(1, f0001);
+  matrix.add(2, f0002);
+  if (DEBUG) {
+    for (int i=0; i < matrix.size(); i++) {
+      Serial.print(i); Serial.print(": ");
+      Serial.println(matrix.get(i)->motor_gramo);
+    }
+  }
+
+}
 void setup()
 {
   // initialize
@@ -87,8 +105,10 @@ void setup()
   //Serial.begin(9600);
   pinMode(LED_BUILTIN, OUTPUT);
 
+  // inicializamos los valores que queremos de cada elemento del set
+  initMatrix();
   // inicializamos motor gramophono
-  motorGramo.setSpeed(16);
+  motorGramophono.setSpeed(16);
 }
 
 void loop()
