@@ -17,7 +17,7 @@ LinkedList<Frame*> matrix = LinkedList<Frame*>();
 
 #define DEBUG true
 
-SLIPEncodedSerial SLIPSerial(Serial);
+SLIPEncodedSerial SLIPSerial(Serial1);
 OSCErrorCode error;
 
 /*
@@ -26,21 +26,21 @@ OSCErrorCode error;
  */
 void gramophono(OSCMessage &msg)
 {
-  if (DEBUG)
-    Serial.println("recibido en gramophono");
-  if (msg.isInt(0))
-  {
-    // recogemos el valor
-    int valor = msg.getInt(0);
-    // movemos el motor
-    motorGramophono.step(valor);
-
     if (DEBUG)
+        Serial.println("recibido en gramophono");
+    if (msg.isInt(0))
     {
-      Serial.print("Motor: ");
-      Serial.println(valor);
+        // recogemos el valor
+        int valor = msg.getInt(0);
+        // movemos el motor
+        motorGramophono.step(valor);
+
+        if (DEBUG)
+        {
+            Serial.print("Motor: ");
+            Serial.println(valor);
+        }
     }
-  }
 }
 
 /**
@@ -49,20 +49,20 @@ void gramophono(OSCMessage &msg)
  */
 void dragonframeShoot(OSCMessage &msg)
 {
-  int frame = 0;
-  if (DEBUG)
-    Serial.println("recibido en dragonframeShoot");
-  if (msg.isInt(0))
-  {
-    frame = msg.getInt(0);
-    Serial.print("SHOOT: ");
-    Serial.println(frame);
-  }
-  // enviamos para mover el motor del gramophono 1/FRAMERATE 
-  OSCMessage msggramo("/gramophono");
-  // recogemos el frame
-  msggramo.add(matrix.get(1)->motor_gramo);
-  gramophono(msggramo);
+    int frame = 0;
+    if (DEBUG)
+        Serial.println("recibido en dragonframeShoot");
+    if (msg.isInt(0))
+    {
+        frame = msg.getInt(0);
+        Serial.print("SHOOT: ");
+        Serial.println(frame);
+    }
+    // enviamos para mover el motor del gramophono 1/FRAMERATE 
+    OSCMessage msggramo("/gramophono");
+    // recogemos el frame
+    msggramo.add(matrix.get(1)->motor_gramo);
+    gramophono(msggramo);
 }
 
 /**
@@ -71,75 +71,91 @@ void dragonframeShoot(OSCMessage &msg)
  */
 void dragonframePosition(OSCMessage &msg)
 {
-  int frame = 0;
-  if (DEBUG)
-    Serial.println("recibido en dragonframePosition");
-  if (msg.isInt(0))
-  {
-    frame = msg.getInt(0);
-    Serial.print("POSITION: ");
-    Serial.println(frame);
-  }
+    int frame = 0;
+    if (DEBUG)
+        Serial.println("recibido en dragonframePosition");
+    if (msg.isInt(0))
+    {
+        frame = msg.getInt(0);
+        Serial.print("POSITION: ");
+        Serial.println(frame);
+    }
 }
 
-void initMatrix(){
-  // m_gramo, s_ventana, l_desk
-  Frame *f0000 = new Frame(0,0,0);
-  Frame *f0001 = new Frame(FRAMESTEPS,90,1);
-  Frame *f0002 = new Frame(FRAMESTEPS/2,90,1);
-  matrix.add(0, f0000);
-  matrix.add(1, f0001);
-  matrix.add(2, f0002);
-  if (DEBUG) {
-    for (int i=0; i < matrix.size(); i++) {
-      Serial.print(i); Serial.print(": ");
-      Serial.println(matrix.get(i)->motor_gramo);
+void initMatrix() {
+    // m_gramo, s_ventana, l_desk
+    Frame *f0000 = new Frame(0, 0, 0);
+    Frame *f0001 = new Frame(FRAMESTEPS, 90, 1);
+    Frame *f0002 = new Frame(FRAMESTEPS/2, 90, 1);
+    matrix.add(0, f0000);
+    matrix.add(1, f0001);
+    matrix.add(2, f0002);
+    if (DEBUG) {
+        for (int i=0; i < matrix.size(); i++) {
+            Serial.print(i); Serial.print(": ");
+            Serial.println(matrix.get(i)->motor_gramo);
+        }
     }
-  }
+}
 
+/*
+ * Receive a line of the csv file with frame information
+ * from esp8266
+ */
+void fileFrames(OSCMessage &msg) {
+    char linea[]="";
+    msg.getString(0, linea);
+    if (DEBUG) {
+        // Recibida linea
+        //Serial.println(linea);
+        Serial.print(".");
+    }
+    msg.empty();
 }
 void setup()
 {
-  // initialize
-  SLIPSerial.begin(9600);
-  //Serial.begin(9600);
-  pinMode(LED_BUILTIN, OUTPUT);
+    // initialize
+    SLIPSerial.begin(115200);
+    Serial.begin(115200);
+    pinMode(LED_BUILTIN, OUTPUT);
 
-  // inicializamos los valores que queremos de cada elemento del set
-  initMatrix();
-  // inicializamos motor gramophono
-  motorGramophono.setSpeed(16);
+    // inicializamos los valores que queremos de cada elemento del set
+    // initMatrix();
+    // inicializamos motor gramophono
+    motorGramophono.setSpeed(16);
 }
+
+OSCMessage msgIN;
 
 void loop()
 {
-  OSCMessage msgIN;
-  int size;
+    int size;
+    // recibimos message
+    while (!SLIPSerial.endofPacket())
+        if ((size = SLIPSerial.available()) > 0)
+        {
+            while (size--)
+                msgIN.fill(SLIPSerial.read());
+        }
 
-  // recibimos message
-  while (!SLIPSerial.endofPacket())
-    if ((size = SLIPSerial.available()) > 0)
+    if (!msgIN.hasError())
     {
-      while (size--)
-        msgIN.fill(SLIPSerial.read());
-      //if (DEBUG) Serial.println(SLIPSerial.read());
+        if (DEBUG) Serial.println("recibido en loop");
+        // despachamos segun el address pattern
+        msgIN.dispatch("/gramophono", gramophono);
+        msgIN.dispatch("/dragonframe/shoot", dragonframeShoot);
+        msgIN.dispatch("/dragonframe/position", dragonframePosition);
+        msgIN.dispatch("/frame", fileFrames);
+        // msgIN.empty(); no vaciar, hacerlo en la funcion callback 
     }
-
-  if (!msgIN.hasError())
-  {
-    // if (DEBUG) Serial.println("recibido en loop");
-    // despachamos segun el address pattern
-    msgIN.dispatch("/gramophono", gramophono);
-    msgIN.dispatch("/dragonframe/shoot", dragonframeShoot);
-    msgIN.dispatch("/dragonframe/position", dragonframePosition);
-  }
-  else
-  {
-    if (DEBUG)
+    else
     {
-      error = msgIN.getError();
-      Serial.print("error general: ");
-      Serial.println(error);
+        /*if (DEBUG)
+        {
+            error = msgIN.getError();
+            Serial.print("error general: ");
+            Serial.println(error);
+        }
+        */
     }
-  }
 }
