@@ -5,7 +5,7 @@
 
 #include <jacsmega.h>
 #include "Frame.h"
-#include <LinkedList.h>
+#include "LinkedListLib.h"
 /*
  * Lista que relaciona  cada frame
  * con la posicion de los motores, servos, leds, etc
@@ -13,9 +13,10 @@
  * Los elementos son objetos de la Clase Frame
  * son los distintos elementos en el set
  */
-LinkedList<Frame*> matrix = LinkedList<Frame*>();
-
-#define DEBUG true
+LinkedList<Frame> matrix = LinkedList<Frame>();
+LinkedList<String> matrix_s;
+bool matrixLista = false;
+String array_s[100] = {};
 
 SLIPEncodedSerial SLIPSerial(Serial1);
 OSCErrorCode error;
@@ -24,14 +25,14 @@ OSCErrorCode error;
  * Control del gramophono
  * Recibe los pasos que se mueve el motor
  */
-void gramophono(OSCMessage &msg)
+void m1(OSCMessage &msg)
 {
     if (DEBUG)
-        Serial.println("recibido en gramophono");
-    if (msg.isInt(0))
+        Serial.println("recibido en M1");
+    if (msg.isFloat(0))
     {
         // recogemos el valor
-        int valor = msg.getInt(0);
+        int valor = msg.getFloat(0);
         // movemos el motor
         motorGramophono.step(valor);
 
@@ -43,6 +44,25 @@ void gramophono(OSCMessage &msg)
     }
 }
 
+/*
+ * Enable or Disable
+ * recepcion de dragonframe
+ */
+
+void dragonframeEnable(OSCMessage &msg)
+{
+    if (DEBUG) {
+        Serial.println("recibido en dragonframeEnable");
+        // para saber el tipo de dato que manda
+        Serial.println(msg.getType(0));
+    }
+    if (msg.isFloat(0)){
+        dragonframeON = msg.getFloat(0);
+        Serial.print("Status Dragonframe ");
+        Serial.println(dragonframeON);
+    }
+    
+}
 /**
  * Eventos del Dragonframe SHOOT
  * antes de capturar frame x
@@ -61,8 +81,8 @@ void dragonframeShoot(OSCMessage &msg)
     // enviamos para mover el motor del gramophono 1/FRAMERATE 
     OSCMessage msggramo("/gramophono");
     // recogemos el frame
-    msggramo.add(matrix.get(1)->motor_gramo);
-    gramophono(msggramo);
+    //msggramo.add(matrix.get(1)->_m1);
+    m1(msggramo);
 }
 
 /**
@@ -82,6 +102,7 @@ void dragonframePosition(OSCMessage &msg)
     }
 }
 
+/*
 void initMatrix() {
     // m_gramo, s_ventana, l_desk
     Frame *f0000 = new Frame(0, 0, 0);
@@ -97,55 +118,80 @@ void initMatrix() {
         }
     }
 }
-
+*/
 /*
  * Receive a line of the csv file with frame information
  * from esp8266
  */
+int f, _m1, m2, s1, s2, l1, l2, l3, np1r, np1g, np1b;
+
 void fileFrames(OSCMessage &msg) {
+
     char linea[]="";
+    // Recibida linea
+    //Serial.println(linea);
     msg.getString(0, linea);
+    
     if (DEBUG) {
-        // Recibida linea
+        //Serial.print(".");
+        //Serial.println(f);
         //Serial.println(linea);
-        Serial.print(".");
+        Serial.print("array_s:");
+        Serial.println(array_s[f]);
+        //Serial.println(frame->_s1);
     }
+
     msg.empty();
+    /*
+    // mostramos la matriz
+    if (f > 5) {
+        Serial.println("MOSTRANDO MATRIX");
+        Serial.println(matrix_s.GetHead());
+        //for (int i=0; i < 26; i++) {
+        //    Serial.print(i); Serial.print(": ");
+        Serial.println(matrix_s.GetAt(3));
+        //}
+        //Serial.println(matrix_s.GetTail());
+    }*/
 }
+
 void setup()
 {
     // initialize
-    SLIPSerial.begin(115200);
-    Serial.begin(115200);
+    SLIPSerial.begin(57600);
+    Serial.begin(57600);
     pinMode(LED_BUILTIN, OUTPUT);
 
-    // inicializamos los valores que queremos de cada elemento del set
-    // initMatrix();
     // inicializamos motor gramophono
     motorGramophono.setSpeed(16);
 }
 
-OSCMessage msgIN;
-
 void loop()
 {
+    OSCMessage msgIN;
     int size;
-    // recibimos message
-    while (!SLIPSerial.endofPacket())
-        if ((size = SLIPSerial.available()) > 0)
-        {
-            while (size--)
-                msgIN.fill(SLIPSerial.read());
-        }
 
+    // Espera por un packet
+    // El loop NO se queda aqui, ver
+    // https://github.com/CNMAT/OSC/blob/master/examples/SerialReceiveInfiniteLoop/SerialReceiveInfiniteLoop.ino
+    if (SLIPSerial.available())
+        while (!SLIPSerial.endofPacket()) 
+            if ((size = SLIPSerial.available()) > 0) 
+                while (size--) {
+                    if (DEBUG) Serial.print(".");
+                    msgIN.fill(SLIPSerial.read());
+                }
+    // esto se ejecuta en cada loop
     if (!msgIN.hasError())
     {
-        if (DEBUG) Serial.println("recibido en loop");
         // despachamos segun el address pattern
-        msgIN.dispatch("/gramophono", gramophono);
-        msgIN.dispatch("/dragonframe/shoot", dragonframeShoot);
-        msgIN.dispatch("/dragonframe/position", dragonframePosition);
-        msgIN.dispatch("/frame", fileFrames);
+        msgIN.dispatch("/m1", m1);
+        msgIN.dispatch("/dragonframe", dragonframeEnable);
+        if (dragonframeON) {
+            msgIN.dispatch("/dragonframe/shoot", dragonframeShoot);
+            msgIN.dispatch("/dragonframe/position", dragonframePosition);
+        } 
+        // msgIN.dispatch("/frame", fileFrames);
         // msgIN.empty(); no vaciar, hacerlo en la funcion callback 
     }
     else
@@ -155,7 +201,6 @@ void loop()
             error = msgIN.getError();
             Serial.print("error general: ");
             Serial.println(error);
-        }
-        */
+        }*/
     }
 }
