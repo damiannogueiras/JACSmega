@@ -32,4 +32,5 @@ bool dragonframeON;
 // gramophono
 #define GRAMOPHONO_MOTOR 13
 // cuidado con el orden
+// En las cone
 Stepper motorGramophono(STEPS, 22, 26, 24, 28);
