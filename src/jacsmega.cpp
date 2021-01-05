@@ -35,7 +35,7 @@ void m1(OSCMessage &msg)
         // recogemos el valor
         int valor = msg.getFloat(0);
         // movemos el motor
-        motorGramophono.step(valor);
+        motor1.step(valor);
 
         if (DEBUG)
         {
@@ -45,6 +45,26 @@ void m1(OSCMessage &msg)
     }
 }
 
+/*
+ * Control de servo
+ */
+void s1(OSCMessage &msg){
+    if (msg.isFloat(0))
+    {
+        // recogemos el valor
+        int valor = msg.getFloat(0);
+        // movemos el servo
+        servo1.write(valor);
+
+        if (DEBUG)
+        {
+            Serial.print("Servo: ");
+            Serial.println(valor);
+        }
+    }
+
+}
+ 
 /*
  * Tira de led1
  * escritorio
@@ -213,7 +233,10 @@ void setup()
     pinMode(LED_BUILTIN, OUTPUT);
 
     // inicializamos motor gramophono
-    motorGramophono.setSpeed(16);
+    motor1.setSpeed(16);
+
+    // inicializamos servo
+    servo1.attach(PIN_SERVO1);
 
     // inicializamos tira leds
     pinMode(PIN_STRIP1, OUTPUT);
@@ -259,6 +282,8 @@ void loop()
         // despachamos segun el address pattern
         // motor1
         msgIN.dispatch("/m1", m1);
+        // servo1
+        msgIN.dispatch("/s1", s1);
         // tira de led 1
         msgIN.route("/strip1", strip1);
 
@@ -268,7 +293,8 @@ void loop()
             msgIN.dispatch("/dragonframe/shoot", dragonframeShoot);
             msgIN.dispatch("/dragonframe/position", dragonframePosition);
         } 
-        // msgIN.dispatch("/frame", fileFrames);
+        // recibe lineas del csv del esp
+        msgIN.dispatch("/frame", fileFrames);
 
         // cualquier otra cosa  
         msgIN.dispatch("/*", cualquiercosa);

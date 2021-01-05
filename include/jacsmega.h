@@ -5,6 +5,7 @@
  */
 
 #include <FastLED.h>
+#include <Servo.h>
 
 #define DEBUG true
 
@@ -28,9 +29,12 @@ bool dragonframeON;
  */
 
 // motor 1 - gramophono
-#define GRAMOPHONO_MOTOR 13
 // cuidado con el orden, en la placa 1-2-3-4 -> 22-24-26-28
-Stepper motorGramophono(STEPS, 22, 26, 24, 28);
+Stepper motor1(STEPS, 22, 26, 24, 28);
+
+// servo s1
+Servo servo1;
+#define PIN_SERVO1 40
 
 // strip1 de neopixels
 // How many leds in your strip?
