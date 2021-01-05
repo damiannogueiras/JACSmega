@@ -12,7 +12,9 @@ Mensajes:
   - +1 giro clockwise, avanza 1/25 de una vuelta
   - -1 giro counterclockwise, retrocede 1/25 de una vuelta
 
-- /strip1: RGB de cada led y su brillo (X es la posicion del neopixel 0..)
+- /s1: Mueve el servo 0 - 180 grados
+
+- /strip1: RGB de cada led y su brillo (X es la posicion del neopixel 0..N)
   - /X/1 (rojo)
   - /X/2 (verde)
   - /X/3 (azul)
@@ -23,5 +25,4 @@ Mensajes:
 Carga de Próximos pasos:
 
 - Control de leds
-- Control de servos
 - Control de motores DC
