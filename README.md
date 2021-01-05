@@ -21,8 +21,9 @@ Mensajes:
   - /X/4 (dimmer)
 
 - /dragonframe: habilita (1) o no (0) recepción de DragonFrame
+
+- /leds/X : controla leds individualmente
   
 Carga de Próximos pasos:
 
-- Control de leds
 - Control de motores DC

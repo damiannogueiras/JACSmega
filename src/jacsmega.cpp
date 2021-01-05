@@ -77,9 +77,9 @@ void strip1(OSCMessage &msg, int patternOffset){
     }
 
     // /strip1/[0-5]/[0-3]
-    // MSG_LED (ocho) es posicion del led
-    // MSG_VALOR seran los valores 1:r , 2:g , 3:b , 4:dimmer
-    int i = addr[MSG_LED] - '0'; // para pasar char a int
+    // MSG_NP (ocho) es posicion del led
+    // MSG_PARAM seran los valores 1:r , 2:g , 3:b , 4:dimmer
+    int i = addr[MSG_NP] - '0'; // para pasar char a int
     int parametro = addr[MSG_PARAM] - '0';
     int valor = msg.getFloat(0);
 
@@ -90,7 +90,7 @@ void strip1(OSCMessage &msg, int patternOffset){
     // actualiza valor en la matriz en memoria
     _strip1All[i][parametro-1] = valor;
     // DEBUG
-    for (int i = 0; i < NUM_LEDS; i++)
+    for (int i = 0; i < NUM_NP; i++)
     {
         Serial.print(i); Serial.print(":");
         for (int j = 0; j < 4; j++) {
@@ -99,14 +99,32 @@ void strip1(OSCMessage &msg, int patternOffset){
         Serial.println();        
     }
     // actualiza el led correspondiente de la tira
-    _strip1[i].red = _strip1All[i][0];
-    _strip1[i].green = _strip1All[i][1];
-    _strip1[i].blue = _strip1All[i][2];
-    _strip1[i].fadeToBlackBy(_strip1All[i][3]);
+    _strip1[i].red = _strip1All[i][R];
+    _strip1[i].green = _strip1All[i][G];
+    _strip1[i].blue = _strip1All[i][B];
+    _strip1[i].fadeToBlackBy(_strip1All[i][DIMMER]);
 
     FastLED.show();
 }
 
+/*
+ * Modificar leds
+ */
+void leds(OSCMessage &msg, int patternOffset){
+    char addr[] = "";
+    if (DEBUG) {  
+        msg.getAddress(addr);
+        Serial.println(addr);
+    }
+    // recoje la posicion del led
+    int i = addr[MSG_LED] - '0'; // para pasar char a int
+    int valor = msg.getFloat(0);
+    // actualiza valor en el array en memoria
+    _leds[i][VALOR] = valor;
+    // modifico led
+    analogWrite(_leds[i][PIN_PLACA_LED], _leds[i][VALOR]);
+} 
+ 
 /*
  * Enable or Disable
  * recepcion de dragonframe
@@ -219,7 +237,7 @@ void fileFrames(OSCMessage &msg) {
 }
 
 void cualquiercosa(OSCMessage &msg) {
-    Serial.print("Cualquiercosa: ");
+    Serial.print("??: ");
     char addr[] = "";
     msg.getAddress(addr);
     Serial.println(addr);
@@ -238,15 +256,23 @@ void setup()
     // inicializamos servo
     servo1.attach(PIN_SERVO1);
 
-    // inicializamos tira leds
+    // inicializamos tira neopixels
     pinMode(PIN_STRIP1, OUTPUT);
-    FastLED.addLeds<LED_TYPE, PIN_STRIP1, COLOR_ORDER>(_strip1, NUM_LEDS).setCorrection(TypicalLEDStrip);
+    FastLED.addLeds<LED_TYPE, PIN_STRIP1, COLOR_ORDER>(_strip1, NUM_NP).setCorrection(TypicalLEDStrip);
     FastLED.setBrightness(max_bright);
-    for (int i = 0; i < NUM_LEDS; i++)
+    for (int i = 0; i < NUM_NP; i++)
     {
         for (int j = 0; j < 4; j++) {
-            _strip1All[i][j] = 0;
+            _strip1All[i][j] = OFF;
         }        
+    }
+
+    // inicializamos los leds
+    for (int i = 0; i < NUM_LEDS; i++)
+    {
+        _leds[i][PIN_PLACA_LED] = _pinLeds[i];
+        _leds[i][VALOR] = OFF;
+        pinMode(_leds[i][PIN_PLACA_LED], OUTPUT);  
     }
 
     Serial.println("Setup done");
@@ -269,6 +295,7 @@ void loop()
                     }
                     msgIN.fill(SLIPSerial.read());
                 }
+    
     // esto se ejecuta en cada loop
     if (!msgIN.hasError())
     {
@@ -284,8 +311,10 @@ void loop()
         msgIN.dispatch("/m1", m1);
         // servo1
         msgIN.dispatch("/s1", s1);
-        // tira de led 1
+        // tira de neopixels 1
         msgIN.route("/strip1", strip1);
+        // leds individuales
+        msgIN.route("/leds", leds);
 
         // enable or disable dragon
         msgIN.dispatch("/dragonframe", dragonframeEnable);
@@ -297,18 +326,18 @@ void loop()
         msgIN.dispatch("/frame", fileFrames);
 
         // cualquier otra cosa  
-        msgIN.dispatch("/*", cualquiercosa);
+        // msgIN.dispatch("/*", cualquiercosa);
 
 
         // msgIN.empty(); no vaciar, hacerlo en la funcion callback 
     }
-    else
+    /*else
     {
-        /*if (DEBUG)
+        if (DEBUG)
         {
             error = msgIN.getError();
             Serial.print("error general: ");
             Serial.println(error);
-        }*/
-    }
+        }
+    }*/
 }
