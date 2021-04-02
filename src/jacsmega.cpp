@@ -1,3 +1,10 @@
+/**
+ *   Recibe los comandos osc del esp y los ejecuta en el set
+ *   Conectar:
+ *             RX (esp8266) - RX1 (mega)
+ *             TX (esp8266) - TX1 (mega)
+ **/
+
 #include <Arduino.h>
 // https://github.com/CNMAT/OSC
 #include <OSCMessage.h>
@@ -66,44 +73,49 @@ void s1(OSCMessage &msg){
 }
  
 /*
- * Tira de led1
- * escritorio
+ * Tiras de led
  */
-void strip1(OSCMessage &msg, int patternOffset){
+void strip(OSCMessage &msg, int patternOffset){
     char addr[] = "";
     if (DEBUG) {  
         msg.getAddress(addr);
         Serial.println(addr);
     }
 
-    // /strip1/[0-5]/[0-3]
-    // MSG_NP (ocho) es posicion del led
-    // MSG_PARAM seran los valores 1:r , 2:g , 3:b , 4:dimmer
-    int i = addr[MSG_NP] - '0'; // para pasar char a int
-    int parametro = addr[MSG_PARAM] - '0';
+    // Mensaje OSC
+    // /strip/[0-(NUM_STRIPS-1)]/[0-3]
+    // MSG_STRIP es el numero strip
+    int stripIndex = addr[MSG_STRIP] - '0'; // para pasar char a int
+    // MSG_STRIP_PARAM seran los valores 1:r , 2:g , 3:b , 4:dimmer
+    int parametro = addr[MSG_STRIP_PARAM] - '0';
     int valor = msg.getFloat(0);
 
-        /*Serial.println(i);
-        Serial.println(parametro);
-        Serial.println(valor);*/
+        Serial.print(stripIndex); Serial.print(": ");
+        Serial.print(parametro); Serial.print("->");
+        Serial.println(valor);
 
-    // actualiza valor en la matriz en memoria
-    _strip1All[i][parametro-1] = valor;
+    // actualiza valor en la matriz en memoria de un elemento
+    _stripsAll[stripIndex][parametro-1] = valor;
+
+
     // DEBUG
-    for (int i = 0; i < NUM_NP; i++)
+    /*for (int i = 0; i < NUM_NP; i++)
     {
         Serial.print(i); Serial.print(":");
         for (int j = 0; j < 4; j++) {
             Serial.print(_strip1All[i][j]);Serial.print("-");
         }
         Serial.println();        
-    }
-    // actualiza el led correspondiente de la tira
-    _strip1[i].red = _strip1All[i][R];
-    _strip1[i].green = _strip1All[i][G];
-    _strip1[i].blue = _strip1All[i][B];
-    _strip1[i].fadeToBlackBy(_strip1All[i][DIMMER]);
+    }*/
 
+    // actualizamos todo la tira con la matriz
+    for(int led = 0; led < NUM_NP_STRIPS; led++) { 
+        _strips[stripIndex][led].red = _stripsAll[stripIndex][R];
+        _strips[stripIndex][led].green = _stripsAll[stripIndex][G];
+        _strips[stripIndex][led].blue = _stripsAll[stripIndex][B];
+        _strips[stripIndex][led].fadeToBlackBy(_stripsAll[stripIndex][DIMMER]);
+    }
+    // mandamos nuevos valores a las tiras
     FastLED.show();
 }
 
@@ -256,16 +268,18 @@ void setup()
     // inicializamos servo
     servo1.attach(PIN_SERVO1);
 
-    // inicializamos tira neopixels
+    // inicializamos tiras neopixels
+    pinMode(PIN_STRIP0, OUTPUT);
     pinMode(PIN_STRIP1, OUTPUT);
-    FastLED.addLeds<LED_TYPE, PIN_STRIP1, COLOR_ORDER>(_strip1, NUM_NP).setCorrection(TypicalLEDStrip);
+    FastLED.addLeds<LED_TYPE, PIN_STRIP0, COLOR_ORDER>(_strips[0], NUM_NP1).setCorrection(TypicalLEDStrip);
+    FastLED.addLeds<LED_TYPE, PIN_STRIP1, COLOR_ORDER>(_strips[1], NUM_NP1).setCorrection(TypicalLEDStrip);
     FastLED.setBrightness(max_bright);
-    for (int i = 0; i < NUM_NP; i++)
+    /*for (int i = 0; i < NUM_NP1; i++)
     {
         for (int j = 0; j < 4; j++) {
             _strip1All[i][j] = OFF;
         }        
-    }
+    }*/
 
     // inicializamos los leds
     for (int i = 0; i < NUM_LEDS; i++)
@@ -311,8 +325,9 @@ void loop()
         msgIN.dispatch("/m1", m1);
         // servo1
         msgIN.dispatch("/s1", s1);
-        // tira de neopixels 1
-        msgIN.route("/strip1", strip1);
+        // tiras de neopixels
+        msgIN.route("/strip", strip);
+
         // leds individuales
         msgIN.route("/leds", leds);
 

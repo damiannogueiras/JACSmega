@@ -36,19 +36,39 @@ PWMServo servo1;
 // pin en la placa
 #define PIN_SERVO1 11
 
+// nro de strips
+#define NUM_STRIPS 2
+// numero de np en las tiras
+#define NUM_NP_STRIPS 30
+// pin en la placa
+#define PIN_STRIP0 51
+#define PIN_STRIP1 53
+// array de arrays
+CRGB _strips[NUM_STRIPS][NUM_NP_STRIPS];
+// Define array para almacenamiento de los valores de los strips
+// Guardamoes 4 valores: r g b dimmer
+int _stripsAll[NUM_STRIPS][4];
+
+
+
 // strip1 de neopixels
 // How many leds in your strip?
-#define NUM_NP 6
-// pin en la placa
-#define PIN_STRIP1 53
+#define NUM_NP1 30
+
+// strip2 de neopixels
+// How many leds in your strip?
+#define NUM_NP2 30
+
 uint8_t max_bright = 128;
 #define LED_TYPE WS2812
 #define COLOR_ORDER GRB
 // Define the array of leds
-CRGB _strip1[NUM_NP];
+CRGB _strip1[NUM_NP1];
+CRGB _strip2[NUM_NP2];
 // Define array para almacenamiento de los valores de los leds
 // Guardamoes 4 valores: r g b dimmer
-int _strip1All[NUM_NP][4];
+int _strip1All[NUM_NP1][4];
+int _strip2All[NUM_NP2][4];
 #define R 0
 #define G 1
 #define B 2
@@ -58,6 +78,12 @@ int _strip1All[NUM_NP][4];
 // 10 corresponde a la posicion del parametro correspondiente en la direccion
 #define MSG_NP 8
 #define MSG_PARAM 10
+
+// msg OSC /strip/[0..NUM_STRIP-1]/[1..4]
+// 7 corresponde a la posicion del nro de strip en la direccion
+// 9 corresponde a la posicion del parametro correspondiente en la direccion
+#define MSG_STRIP 7
+#define MSG_STRIP_PARAM 9
 
 // leds
 // nro de leds
