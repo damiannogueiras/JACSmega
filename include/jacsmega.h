@@ -16,6 +16,10 @@
 
 #define FRAMERATE 25
 
+// funcoines para efecto kitt
+void kittOnOff(OSCMessage &msg, int param);
+void kittVelocidad(OSCMessage &msg, int param);
+
 // habilitar la recepcion de dragonframe
 bool dragonframeON;
 
